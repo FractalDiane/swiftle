@@ -25,6 +25,23 @@ func printLettersGuessed(_ guessed: Set<Character>) {
 	print(output)
 }
 
+func allIndicesOf(_ string: String, _ of: Character) -> Set<String.Index> {
+	var result: Set<String.Index> = []
+	for i in string.indices {
+		if string[i] == of {
+			result.insert(i)
+		}
+	}
+
+	return result
+}
+
+enum GuessResult {
+	case Right
+	case WrongSpot
+	case Wrong
+}
+
 let words = [
 	"thing", "miser", "stone", "color", "swift", "glass", "plate", "crack", "table", "index",
 	"never", "shard", "cabin", "freed", "shade", "solar", "clear", "vigil", "quest", "exalt",
@@ -52,26 +69,50 @@ gameLoop: while true {
 		} while input.count != 5 || input.contains(where: { !$0.isLetter})
 
 		var matches: Int8 = 0
-		var output = String()
+		
 		var counts = targetCharCounts
+		var guessResults: [(Character, GuessResult)] = []
 		for i in input.indices {
 			let guessChar = Character(String(input[i]).lowercased())
-			let outputChar = String(guessChar).uppercased()
 			lettersGuessed.insert(guessChar)
 			
-			if let index = targetWord.firstIndex(of: guessChar) {
-				if index == i {
-					output += outputChar.black.onGreen
-					matches += 1
-					counts[guessChar, default: 0] -= 1
-				} else if counts[guessChar] ?? 0 > 0 {
-					output += outputChar.black.onYellow
-					counts[guessChar, default: 0] -= 1
-				} else {
-					output += outputChar
+			let indices = allIndicesOf(targetWord, guessChar)
+			if !indices.isEmpty {
+				var found = false
+				for index in indices {
+					if index == i {
+						guessResults.append((guessChar, GuessResult.Right))
+						matches += 1
+						counts[guessChar]! -= 1
+
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					guessResults.append((guessChar, GuessResult.WrongSpot))
 				}
 			} else {
-				output += outputChar
+				guessResults.append((guessChar, GuessResult.Wrong))
+			}
+		}
+
+		var output = String()
+		for char in guessResults {
+			let outputChar = String(char.0).uppercased()
+			switch char.1 {
+				case GuessResult.Right:
+					output += outputChar.black.onGreen
+				case GuessResult.WrongSpot:
+					if counts[char.0]! > 0 {
+						output += outputChar.black.onYellow
+						counts[char.0]! -= 1
+					} else {
+						output += outputChar
+					}
+				case GuessResult.Wrong:
+					output += outputChar
 			}
 		}
 
